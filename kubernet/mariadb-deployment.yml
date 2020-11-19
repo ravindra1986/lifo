@@ -1,0 +1,88 @@
+#Service
+apiVersion: v1
+kind: Service
+metadata:
+ name: mariadb
+ labels: 
+     app: mariadb
+     tier: database
+ spec:
+    ports:
+        -port: 3306
+        targetPort:3306
+    selectors:
+        app: mariadb
+        tier: database
+        clusterIP: None
+
+#Persistent volume claimName
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+ name: mariadb-pvc
+ labels: 
+     app: mariadb
+     tier: database
+ spec:
+    accessMods:
+        -ReadWriteOnce
+    resources: 
+        requests: 
+            storage: 1Gi
+
+ #Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mariadb
+  labels:
+    app: mariadb
+    tier: database
+spec:
+    selector: 
+        matchLables:
+            app: mariadb
+            tier: database 
+        strategy:
+           type:Recreate
+        template:
+            metadata:
+                labels:
+                   app: mariadb
+                   tier: database 
+            spec:
+                containers:
+                     name: maraidb-container
+                    -image: mariadb/server:10.4
+                ports:
+                 - containerPort: 6033
+                env:
+                    - name: MYSQL_USER
+                      valueFrom:
+                        secretKeyRef:
+                          name: db-credentials
+                          key: username
+                        - name: MYSQL_DATABASE
+                      valueFrom:
+                        secretKeyRef:
+                          name: db-conf
+                          key: name
+                    - name: MYSQL_PASSWORD
+                      valueFrom:
+                        secretKeyRef:
+                          name: db-credentials
+                          key: password
+                    - name: MYSQL_ROOT_PASSWORD
+                      valueFrom:
+                        secretKeyRef:
+                          name: db-root-credentials
+                          key: password
+                  volumeMounts:
+                    - name: mariadb-vol
+                      mountPath: /var/lib/mysql
+                  volumes:
+                    - name: mariadb-vol
+                      persistentVolumeClaim:
+                      claimName: mariadb-pvc
+           
